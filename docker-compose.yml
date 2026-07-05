@@ -79,6 +79,9 @@ services:
   simulator:
     build: ./simulator
     profiles: ["sim"]
+    environment:
+      SIM_MODE: ${SIM_MODE:-diurnal}
+      PYTHONUNBUFFERED: "1"
     ports:
       - "1502:1502"
     restart: unless-stopped

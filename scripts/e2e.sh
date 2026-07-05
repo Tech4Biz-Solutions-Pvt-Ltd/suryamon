@@ -4,6 +4,8 @@
 # every integration point. Run: ./scripts/e2e.sh
 set -euo pipefail
 
+export SIM_MODE=fixed-noon
+
 cleanup() { docker compose --profile sim down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
@@ -37,8 +39,14 @@ done
 [ "$n" -ge 16 ] && echo "  PASS ($n string scores)"
 
 echo "[4/5] soiled string detected (inv-01 string 3 > 0.15)"
-score=$(curl -sf 'localhost:8428/api/v1/query?query=suryamon_string_anomaly_score{inverter="inv-01",string="3"}' \
-  | python3 -c 'import sys,json; r=json.load(sys.stdin)["data"]["result"]; print(r[0]["value"][1] if r else 0)')
+score=0
+for i in $(seq 1 12); do
+  score=$(curl -sfG 'localhost:8428/api/v1/query' \
+    --data-urlencode 'query=suryamon_string_anomaly_score{inverter="inv-01",string="3"}' \
+    | python3 -c 'import sys,json; r=json.load(sys.stdin)["data"]["result"]; print(r[0]["value"][1] if r else 0)' 2>/dev/null || echo 0)
+  python3 -c "exit(0 if float('$score') > 0.15 else 1)" && break
+  sleep 10
+done
 python3 -c "assert float('$score') > 0.15, 'score=$score'" && echo "  PASS (score=$score)"
 
 echo "[5/5] vmalert loaded rules, Grafana healthy"

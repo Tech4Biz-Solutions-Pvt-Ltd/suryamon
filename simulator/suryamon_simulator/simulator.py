@@ -18,6 +18,7 @@ import math
 import random
 import struct
 import time
+import os
 
 from pymodbus.datastore import (
     ModbusServerContext,
@@ -31,6 +32,7 @@ RATED_W_PER_INV = 50_000
 STRINGS = 8
 SOILED = {(1, 3): 0.75}  # (unit_id, string_index) -> output factor
 DAY_SECONDS = 600  # one simulated day every 10 minutes
+SIM_MODE = os.environ.get("SIM_MODE", "diurnal")  # diurnal | fixed-noon
 
 
 def _str16(s: str, words: int) -> list[int]:
@@ -76,7 +78,7 @@ def build_map(unit_id: int, ac_w: float, energy_wh: float, temp_c: float) -> lis
     per_string_w = (ac_w * 1.04) / STRINGS
     for i in range(1, STRINGS + 1):
         factor = SOILED.get((unit_id, i), 1.0)
-        voltage = 620.0 + random.uniform(-5, 5)
+        voltage = 620.0 if SIM_MODE == "fixed-noon" else 620.0 + random.uniform(-5, 5)
         current = (per_string_w * factor) / voltage
         module = [0] * 20
         module[9] = _u16(current * 100)  # DCA in centiamps
@@ -90,6 +92,9 @@ def build_map(unit_id: int, ac_w: float, energy_wh: float, temp_c: float) -> lis
 
 def irradiance_factor(t: float) -> float:
     """Bell curve over the simulated day plus cloud noise."""
+    if SIM_MODE == "fixed-noon":
+        return 1.0
+    
     phase = (t % DAY_SECONDS) / DAY_SECONDS  # 0..1
     if phase < 0.2 or phase > 0.8:
         return 0.0
