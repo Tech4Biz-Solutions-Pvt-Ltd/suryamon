@@ -1,0 +1,12 @@
+# Copyright 2026 Tech4Biz Solutions. Apache-2.0.
+route:
+  receiver: default
+  group_by: [plant, alertname]
+  group_wait: 30s
+  repeat_interval: 4h
+
+receivers:
+  - name: default
+    # Add your webhook, email, or Slack config here. Example:
+    # webhook_configs:
+    #   - url: http://your-endpoint/alerts

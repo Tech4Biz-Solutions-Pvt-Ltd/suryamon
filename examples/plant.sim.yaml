@@ -1,0 +1,8 @@
+# Copyright 2026 Tech4Biz Solutions. Apache-2.0.
+plant:
+  name: demo-rooftop
+  capacity_kwp: 100.0
+  location: { lat: 12.97, lon: 77.59, tz: Asia/Kolkata }
+inverters:
+  - { id: inv-01, host: simulator, port: 1502, unit_id: 1, strings: 8 }
+  - { id: inv-02, host: simulator, port: 1502, unit_id: 2, strings: 8 }

@@ -1,0 +1,8 @@
+# Copyright 2026 Tech4Biz Solutions. Apache-2.0.
+apiVersion: 1
+providers:
+  - name: suryamon
+    folder: Suryamon
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

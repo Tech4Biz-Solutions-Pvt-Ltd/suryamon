@@ -1,0 +1,87 @@
+# Copyright 2026 Tech4Biz Solutions. Apache-2.0.
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.102.0
+    command:
+      - -storageDataPath=/storage
+      - -retentionPeriod=2y
+    volumes:
+      - vm-data:/storage
+    ports:
+      - "8428:8428"
+    restart: unless-stopped
+
+  collector:
+    build: ./collector
+    volumes:
+      - ./plant.yaml:/etc/suryamon/plant.yaml:ro
+    environment:
+      SURYAMON_CONFIG: /etc/suryamon/plant.yaml
+      SURYAMON_POLL_INTERVAL: "10"
+    ports:
+      - "9101:9101"
+    restart: unless-stopped
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.102.0
+    command:
+      - -promscrape.config=/etc/vmagent/scrape.yml
+      - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+    volumes:
+      - ./deploy/vmagent/scrape.yml:/etc/vmagent/scrape.yml:ro
+    depends_on: [victoriametrics, collector]
+    restart: unless-stopped
+
+  analytics:
+    build: ./analytics
+    volumes:
+      - ./plant.yaml:/etc/suryamon/plant.yaml:ro
+    environment:
+      SURYAMON_CONFIG: /etc/suryamon/plant.yaml
+      VM_URL: http://victoriametrics:8428
+      COMPUTE_INTERVAL: "300"
+    depends_on: [victoriametrics]
+    restart: unless-stopped
+
+  vmalert:
+    image: victoriametrics/vmalert:v1.102.0
+    command:
+      - -datasource.url=http://victoriametrics:8428
+      - -remoteWrite.url=http://victoriametrics:8428
+      - -remoteRead.url=http://victoriametrics:8428
+      - -rule=/etc/vmalert/rules/*.yml
+      - -notifier.url=http://alertmanager:9093
+    volumes:
+      - ./deploy/vmalert:/etc/vmalert/rules:ro
+    depends_on: [victoriametrics]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./deploy/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: suryamon
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on: [victoriametrics]
+    restart: unless-stopped
+
+  simulator:
+    build: ./simulator
+    profiles: ["sim"]
+    ports:
+      - "1502:1502"
+    restart: unless-stopped
+
+volumes:
+  vm-data:

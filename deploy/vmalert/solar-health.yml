@@ -1,0 +1,62 @@
+# Copyright 2026 Tech4Biz Solutions. Apache-2.0.
+groups:
+  - name: suryamon-plant-health
+    interval: 60s
+    rules:
+      - alert: InverterOffline
+        expr: suryamon_inverter_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inverter {{ $labels.inverter }} unreachable"
+          description: "No successful Modbus poll for 5 minutes. Check network path and inverter power."
+
+      - alert: StringUnderperforming
+        expr: suryamon_string_anomaly_score > 0.15
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "String {{ $labels.string }} on {{ $labels.inverter }} is {{ $value | humanizePercentage }} below plant median"
+          description: "Sustained low current on one string. Likely causes: soiling, shading, connector fault, or module failure."
+
+      - alert: StringDead
+        expr: suryamon_string_anomaly_score > 0.90
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "String {{ $labels.string }} on {{ $labels.inverter }} produces near-zero current"
+          description: "String current is at or near zero during production hours. Check fuse, connector, and isolation."
+
+      - alert: PerformanceRatioDegraded
+        expr: suryamon_performance_ratio{window="1d"} < 0.75
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plant {{ $labels.plant }} PR dropped to {{ $value | printf \"%.2f\" }}"
+          description: "Daily performance ratio below 0.75. Healthy plants in India run 0.75 to 0.85. Investigate soiling, curtailment, or inverter clipping."
+
+      - alert: SoilingDrift
+        expr: |
+          (
+            avg_over_time(suryamon_performance_ratio{window="1d"}[3d])
+            < 0.95 * avg_over_time(suryamon_performance_ratio{window="1d"}[21d] offset 3d)
+          )
+        for: 1d
+        labels:
+          severity: info
+        annotations:
+          summary: "Plant {{ $labels.plant }} shows gradual PR decline consistent with soiling"
+          description: "3-day PR average is 5%+ below the trailing 3-week baseline. Schedule module cleaning and compare PR recovery."
+
+      - alert: InverterOverTemperature
+        expr: suryamon_cabinet_temp_celsius > 65
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Inverter {{ $labels.inverter }} cabinet at {{ $value }}C"
+          description: "Sustained cabinet temperature above 65C accelerates component ageing and triggers derating. Check ventilation and fans."

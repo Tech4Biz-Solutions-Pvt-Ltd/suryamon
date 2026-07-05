@@ -1,0 +1,6 @@
+[project]
+name = "suryamon-simulator"
+version = "0.1.0"
+description = "SunSpec plant simulator for Suryamon demos and tests"
+requires-python = ">=3.11"
+dependencies = ["pymodbus>=3.6,<3.7"]

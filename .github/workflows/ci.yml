@@ -1,0 +1,19 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "pymodbus>=3.6,<3.7" prometheus-client pyyaml requests pytest promql-parser
+      - run: python -m pytest tests/ -v
+      - name: Validate all PromQL expressions
+        run: python scripts/validate_promql.py
+  e2e:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/e2e.sh
